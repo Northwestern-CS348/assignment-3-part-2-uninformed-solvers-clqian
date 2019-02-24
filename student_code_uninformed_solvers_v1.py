@@ -87,24 +87,35 @@ class SolverBFS(UninformedSolver):
             return atLeastOneChild
 
     def visitNodeAtDepth(self, depth):
-        curr_state = self.currentState
-        while curr_state.nextChildToVisit < len(curr_state.children):
-            child_state = curr_state.children[curr_state.nextChildToVisit]
-            curr_state.nextChildToVisit += 1
-            if depth > self.currentState.depth + 1:
+        if depth == self.currentState.depth + 1:
+            curr_state = self.currentState
+            while curr_state.nextChildToVisit < len(curr_state.children):
+                child_state = curr_state.children[curr_state.nextChildToVisit]
+                curr_state.nextChildToVisit += 1
+                if child_state not in self.visited:
+                    self.visited[child_state] = True
+                    self.gm.makeMove(child_state.requiredMovable)
+                    self.currentState = child_state
+                    return True
+        elif depth > self.currentState.depth + 1:
+            curr_state = self.currentState
+            while curr_state.nextChildToVisit < len(curr_state.children):
+                child_state = curr_state.children[curr_state.nextChildToVisit]
+                curr_state.nextChildToVisit += 1
                 self.gm.makeMove(child_state.requiredMovable)
                 self.currentState = child_state
-                if not self.visitNodeAtDepth(depth):
-                    return False
+                if self.visitNodeAtDepth(depth):
+                    return True
                 self.gm.reverseMove(child_state.requiredMovable)
                 self.currentState = self.currentState.parent
-            elif child_state not in self.visited:
-                self.visited[child_state] = True
-                self.gm.makeMove(child_state.requiredMovable)
-                self.currentState = child_state
-                return False
-        return True
-
+        if self.currentState.parent:
+            self.gm.reverseMove(self.currentState.requiredMovable)
+            self.currentState = self.currentState.parent
+            return self.visitNodeAtDepth(depth)
+        if self.genChildrenAtDepth(depth):
+            return self.visitNodeAtDepth(depth + 1)
+        else:
+            return False
 
 
     def solveOneStep(self):
@@ -123,15 +134,4 @@ class SolverBFS(UninformedSolver):
         ### Student code goes here
         if self.currentState.state == self.victoryCondition:
             return True
-        depth = self.currentState.depth
-        while True:
-            if depth > self.currentState.depth:
-                if not self.visitNodeAtDepth(depth):
-                    return False
-            if self.currentState.parent:
-                self.gm.reverseMove(self.currentState.requiredMovable)
-                self.currentState = self.currentState.parent
-            elif self.genChildrenAtDepth(depth):
-                depth += 1
-            else:
-                return True
+        return not self.visitNodeAtDepth(self.currentState.depth)

@@ -34,7 +34,17 @@ class TowerOfHanoiGame(GameMaster):
             A Tuple of Tuples that represent the game state
         """
         ### student code goes here
-        pass
+        pegs = []
+        for i in range(1, 4):
+            fact = parse_input('fact: (on ?disk peg' + str(i) + ')')
+            xs = self.kb.kb_ask(fact)
+            disks = []
+            if xs:
+                for bindings in xs.list_of_bindings:
+                    disks.append(int(str(bindings[0].bound_to(Variable('?disk')))[4:]))
+                disks.sort()
+            pegs.append(tuple(disks))
+        return tuple(pegs)
 
     def makeMove(self, movable_statement):
         """
@@ -53,7 +63,57 @@ class TowerOfHanoiGame(GameMaster):
             None
         """
         ### Student code goes here
-        pass
+        terms = movable_statement.terms
+        disk_to_move = str(terms[0])
+        o_peg = str(terms[1])
+        n_peg = str(terms[2])
+        new_fact = parse_input('fact: (on ' + disk_to_move + ' ' + n_peg + ')')
+        old_fact = parse_input('fact: (on ' + disk_to_move + ' ' + o_peg + ')')
+
+        old_bot_bindings = self.kb.kb_ask(parse_input('fact: (onTopOf ' + disk_to_move + ' ?X)'))
+        old_bot = str(old_bot_bindings.list_of_bindings[0][0].bound_to(Variable('?X')))
+        if old_bot == 'base':
+            fact1 = parse_input('fact: (isEmpty ' + o_peg + ')')    # if old peg will be empty
+        else:
+            fact1 = parse_input('fact: (onTopOf nothing ' + old_bot + ')')
+        above_old_bot = parse_input('fact: (onTopOf ' + disk_to_move + ' ' + old_bot + ')')
+
+        # if self.kb.kb_ask(parse_input('fact: (onTopOf ' + disk_to_move + ' base)')):
+        #     self.kb.kb_retract(parse_input('fact: (onTopOf ' + disk_to_move + ' base)'))
+        #     self.kb.kb_assert(parse_input('fact: (isEmpty ' + o_peg + ')'))
+        # else:  # set new top for old peg
+        #     o_peg_disks = self.kb.kb_ask(parse_input('fact: (onTopOf ' + disk_to_move + ' ?disk)'))
+        #     for bindings in o_peg_disks.list_of_bindings:
+        #         n_top = str(bindings[0].bound_to(Variable('?disk')))
+        #         self.kb.kb_retract(parse_input('fact: (onTopOf ' + disk_to_move + ' ' + n_top + ')'))
+        #         self.kb.kb_assert(parse_input('fact: (onTopOf nothing ' + n_top + ')'))
+
+        # if target peg is empty
+        n_peg_empty = parse_input('fact: (isEmpty ' + n_peg + ')')
+        new_peg_empty = self.kb.kb_ask(n_peg_empty)
+        if new_peg_empty:
+            above_new_bot = parse_input('fact: (onTopOf ' + disk_to_move + ' base')
+        else:  # if target peg has disks
+            # find top disk on target peg
+            all_tops = self.kb.kb_ask(parse_input('fact: (onTopOf nothing ?disk)'))
+            for bindings in all_tops.list_of_bindings:
+                top = str(bindings[0].bound_to(Variable('?disk')))
+                if self.kb.kb_ask(parse_input('fact: (on ' + top + ' ' + n_peg + ')')):
+                    fact2 = parse_input('fact: (onTopOf nothing ' + top + ')')
+                    above_new_bot = parse_input('fact: (onTopOf ' + disk_to_move + ' ' + top + ')')
+                    break
+
+        self.kb.kb_retract(parse_input('fact: (onTopOf nothing ' + disk_to_move + ')'))
+        self.kb.kb_retract(above_old_bot)
+        self.kb.kb_retract(old_fact)
+        if new_peg_empty:
+            self.kb.kb_retract(n_peg_empty)
+        else:
+            self.kb.kb_retract(fact2)
+        self.kb.kb_assert(new_fact)
+        self.kb.kb_assert(above_new_bot)
+        self.kb.kb_assert(fact1)
+        self.kb.kb_assert(parse_input('fact: (onTopOf nothing ' + disk_to_move + ')'))
 
     def reverseMove(self, movable_statement):
         """
@@ -100,7 +160,22 @@ class Puzzle8Game(GameMaster):
             A Tuple of Tuples that represent the game state
         """
         ### Student code goes here
-        pass
+        posns = []
+        posn = ['pos1', 'pos2', 'pos3']
+        for y in posn:
+            tiles = []
+            for x in posn:
+                fact = parse_input('fact: (pos ?tile ' + x + ' ' + y + ')')
+                xs = self.kb.kb_ask(fact)
+                if xs:
+                    for bindings in xs.list_of_bindings:
+                        space = str(bindings[0].bound_to(Variable('?tile')))
+                        if space == 'empty':
+                            tiles.append(-1)
+                        else:
+                            tiles.append(int(space[4:]))
+            posns.append(tuple(tiles))
+        return tuple(posns)
 
     def makeMove(self, movable_statement):
         """
@@ -119,7 +194,20 @@ class Puzzle8Game(GameMaster):
             None
         """
         ### Student code goes here
-        pass
+        terms = movable_statement.terms
+        tile_to_move = str(terms[0])
+        t_posx = str(terms[1])
+        t_posy = str(terms[2])
+        e_posx = str(terms[3])
+        e_posy = str(terms[4])
+        t_old_posn = parse_input('fact: (pos ' + tile_to_move + ' ' + t_posx + ' ' + t_posy + ')')
+        t_new_posn = parse_input('fact: (pos ' + tile_to_move + ' ' + e_posx + ' ' + e_posy + ')')
+        e_new_posn = parse_input('fact: (pos empty ' + t_posx + ' ' + t_posy + ')')
+        e_old_posn = parse_input('fact: (pos empty ' + e_posx + ' ' + e_posy + ')')
+        self.kb.kb_retract(e_old_posn)
+        self.kb.kb_retract(t_old_posn)
+        self.kb.kb_assert(t_new_posn)
+        self.kb.kb_assert(e_new_posn)
 
     def reverseMove(self, movable_statement):
         """
